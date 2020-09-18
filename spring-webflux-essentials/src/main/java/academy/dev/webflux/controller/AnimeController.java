@@ -1,7 +1,6 @@
 package academy.dev.webflux.controller;
 
 import academy.dev.webflux.domain.Anime;
-import academy.dev.webflux.repository.AnimeRepository;
 import academy.dev.webflux.service.AnimeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,7 @@ public class AnimeController {
     }
 
     @GetMapping(path = "{id}")
-    public Mono<Anime> findById(@PathVariable("id") int id) {
+    public Mono<Anime> findById(@PathVariable int id) {
         return animeService.findById(id);
     }
 }
