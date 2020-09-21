@@ -6,6 +6,7 @@ import academy.dev.webflux.util.AnimeCreator;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.blockhound.BlockHound;
@@ -54,8 +55,15 @@ public class AnimeServiceTest {
     public void setUp() {
         BDDMockito.when(animeRepositoryMock.findAll())
                 .thenReturn(Flux.just(anime));
+
         BDDMockito.when(animeRepositoryMock.findById(ArgumentMatchers.anyInt()))
                 .thenReturn(Mono.just(anime));
+
+        BDDMockito.when(animeRepositoryMock.save(AnimeCreator.createAnimeToBeSaved()))
+                .thenReturn(Mono.just(anime));
+
+        BDDMockito.when(animeRepositoryMock.delete(ArgumentMatchers.any(Anime.class)))
+                .thenReturn(Mono.empty());
     }
 
     @Test
@@ -83,6 +91,36 @@ public class AnimeServiceTest {
                 .thenReturn(Mono.empty());
 
         StepVerifier.create(animeService.findById(1))
+                .expectSubscription()
+                .expectError(ResponseStatusException.class)
+                .verify();
+    }
+
+    @Test
+    @DisplayName("save creates an anime when successful")
+    public void save_CreatesAnime_WhenSuccessful() {
+        Anime animeToBeSaved = AnimeCreator.createAnimeToBeSaved();
+        StepVerifier.create(animeService.save(animeToBeSaved))
+                .expectSubscription()
+                .expectNext(anime)
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("delete removes an anime when successful")
+    public void delete_RemovesAnime_WhenSuccessful() {
+        StepVerifier.create(animeService.delete(1))
+                .expectSubscription()
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("delete returns Mono error when anime does not exist")
+    public void delete_ReturnMonoError_WhenEmptyMonoIsReturned() {
+        BDDMockito.when(animeRepositoryMock.findById(ArgumentMatchers.anyInt()))
+                .thenReturn(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Anime not found")));
+
+        StepVerifier.create(animeService.delete(1))
                 .expectSubscription()
                 .expectError(ResponseStatusException.class)
                 .verify();
