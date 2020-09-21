@@ -29,7 +29,7 @@ public class AnimeService {
     }
 
     public Mono<Void> update(Anime anime) {
-        return animeRepository.findById(anime.getId())
+        return findById(anime.getId())
                 .flatMap(result -> {
                     result.setName(anime.getName());
                     return animeRepository.save(result);
