@@ -1,6 +1,7 @@
 package academy.dev.webflux.integration;
 
 import academy.dev.webflux.domain.Anime;
+import academy.dev.webflux.exception.CustomAttributes;
 import academy.dev.webflux.repository.AnimeRepository;
 import academy.dev.webflux.service.AnimeService;
 import academy.dev.webflux.util.AnimeCreator;
@@ -19,14 +20,13 @@ import reactor.blockhound.BlockingOperationError;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import reactor.test.StepVerifier;
 
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 @ExtendWith(SpringExtension.class)
 @WebFluxTest
-@Import(AnimeService.class)
+@Import({AnimeService.class, CustomAttributes.class})
 public class AnimalControllerIT {
 
     @MockBean
@@ -46,6 +46,9 @@ public class AnimalControllerIT {
     public void setUp() {
         BDDMockito.when(animeRepositoryMock.findAll())
                 .thenReturn(Flux.just(anime));
+
+        BDDMockito.when(animeRepositoryMock.findById(ArgumentMatchers.anyInt()))
+                .thenReturn(Mono.just(anime));
     }
 
     @Test
@@ -89,6 +92,34 @@ public class AnimalControllerIT {
                 .expectBodyList(Anime.class)
                 .hasSize(1)
                 .contains(anime);
+    }
+
+    @Test
+    @DisplayName("findById returns Mono with anime when it exists")
+    public void findById_ReturnMonoAnime_WhenSuccessful() {
+        testClient
+                .get()
+                .uri("/animes/{id}", 1)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Anime.class)
+                .isEqualTo(anime);
+    }
+
+    @Test
+    @DisplayName("findById returns Mono error when anime does not exists")
+    public void findById_ReturnMonoError_WhenEmptyMonoIsReturned() {
+        BDDMockito.when(animeRepositoryMock.findById(ArgumentMatchers.anyInt()))
+                .thenReturn(Mono.empty());
+
+        testClient
+                .get()
+                .uri("/animes/{id}", 1)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(404)
+                .jsonPath("$.developerMessage").isEqualTo("A ResponseStatusException Happened");
 
     }
 
