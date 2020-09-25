@@ -1,18 +1,16 @@
 package academy.dev.webflux.integration;
 
 import academy.dev.webflux.domain.Anime;
-import academy.dev.webflux.exception.CustomAttributes;
 import academy.dev.webflux.repository.AnimeRepository;
-import academy.dev.webflux.service.AnimeService;
 import academy.dev.webflux.util.AnimeCreator;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -25,12 +23,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 @ExtendWith(SpringExtension.class)
-@WebFluxTest
-@Import({AnimeService.class, CustomAttributes.class})
+@SpringBootTest
+//@Import({AnimeService.class, CustomAttributes.class})
+@AutoConfigureWebTestClient
 public class AnimalControllerIT {
 
     @MockBean
@@ -43,7 +43,8 @@ public class AnimalControllerIT {
 
     @BeforeAll
     public static void blockHoundSetup() {
-        BlockHound.install();
+        BlockHound.install(builder ->
+                builder.allowBlockingCallsInside("java.util.UUID", "randomUUID"));
     }
 
     @BeforeEach
@@ -56,6 +57,10 @@ public class AnimalControllerIT {
 
         BDDMockito.when(animeRepositoryMock.save(AnimeCreator.createAnimeToBeSaved()))
                 .thenReturn(Mono.just(anime));
+
+        BDDMockito.when(animeRepositoryMock
+                .saveAll(List.of(AnimeCreator.createAnimeToBeSaved(), AnimeCreator.createAnimeToBeSaved())))
+                .thenReturn(Flux.just(anime, anime));
 
         BDDMockito.when(animeRepositoryMock.delete(ArgumentMatchers.any(Anime.class)))
                 .thenReturn(Mono.empty());
@@ -150,7 +155,23 @@ public class AnimalControllerIT {
                 .expectStatus().isCreated()
                 .expectBody(Anime.class)
                 .isEqualTo(anime);
+    }
 
+    @Test
+    @DisplayName("saveBatch creates a list of anime when successful")
+    public void saveBatch_CreatesListOfAnime_WhenSuccessful() {
+        Anime animeToBeSaved = AnimeCreator.createAnimeToBeSaved();
+
+        testClient
+                .post()
+                .uri("/animes/batch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BodyInserters.fromValue(List.of(animeToBeSaved, animeToBeSaved)))
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBodyList(Anime.class)
+                .hasSize(2)
+                .contains(anime);
     }
 
     @Test
@@ -168,6 +189,26 @@ public class AnimalControllerIT {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(400);
 
+    }
+
+    @Test
+    @DisplayName("saveAll returns Mono error when one of the objects in the list contains null or empty name")
+    public void saveAll_ReturnsMonoError_WhenContainsInvalidName() {
+        Anime animeToBeSaved = AnimeCreator.createAnimeToBeSaved();
+
+        BDDMockito.when(animeRepositoryMock
+                .saveAll(ArgumentMatchers.anyIterable()))
+                .thenReturn(Flux.just(anime, anime.withName("")));
+
+        testClient
+                .post()
+                .uri("/animes/batch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BodyInserters.fromValue(List.of(animeToBeSaved, animeToBeSaved)))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(400);
     }
 
     @Test
