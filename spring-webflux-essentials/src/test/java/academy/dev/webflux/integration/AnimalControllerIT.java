@@ -96,9 +96,32 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("listAll returns a flux of anime")
-    public void listAll_ReturnFluxOfAnime_WhenSuccessful() {
+    @DisplayName("listAll returns unauthorized when user is not successfully authenticated")
+    public void listAll_ReturnsUnauthorized_WhenUserIsNotAuthenticated() {
+        testClientInvalid
+                .get()
+                .uri("/animes")
+                .exchange()
+                .expectStatus().isUnauthorized();
+
+    }
+
+    @Test
+    @DisplayName("listAll returns forbidden when user is successfully authenticated and does not have role USER")
+    public void listAll_ReturnsForbidden_WhenUserDoesNotHaveRoleAdmin() {
         testClientUser
+                .get()
+                .uri("/animes")
+                .exchange()
+                .expectStatus().isForbidden();
+
+    }
+
+
+    @Test
+    @DisplayName("listAll returns a flux of anime when user is successfully authenticated and has role ADMIN")
+    public void listAll_ReturnFluxOfAnime_WhenSuccessful() {
+        testClientAdmin
                 .get()
                 .uri("/animes")
                 .exchange()
@@ -110,9 +133,9 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("listAll falvor2 returns a flux of anime")
+    @DisplayName("listAll falvor2 returns a flux of anime when user is successfully authenticated and has role ADMIN")
     public void listAll_Flavor2_ReturnFluxOfAnime_WhenSuccessful() {
-        testClientUser
+        testClientAdmin
                 .get()
                 .uri("/animes")
                 .exchange()
@@ -123,7 +146,7 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("findById returns Mono with anime when it exists")
+    @DisplayName("findById returns Mono with anime when it exists and user is successfully authenticated and has role USER")
     public void findById_ReturnMonoAnime_WhenSuccessful() {
         testClientUser
                 .get()
@@ -135,7 +158,7 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("findById returns Mono error when anime does not exists")
+    @DisplayName("findById returns Mono error when anime does not exists and user is successfully authenticated and has role USER")
     public void findById_ReturnMonoError_WhenEmptyMonoIsReturned() {
         BDDMockito.when(animeRepositoryMock.findById(ArgumentMatchers.anyInt()))
                 .thenReturn(Mono.empty());
@@ -152,11 +175,11 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("save creates an anime when successful")
+    @DisplayName("save creates an anime when successful and user is successfully authenticated and has role ADMIN")
     public void save_CreatesAnime_WhenSuccessful() {
         Anime animeToBeSaved = AnimeCreator.createAnimeToBeSaved();
 
-        testClientUser
+        testClientAdmin
                 .post()
                 .uri("/animes")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -168,11 +191,11 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("saveBatch creates a list of anime when successful")
+    @DisplayName("saveBatch creates a list of anime when successful and user is successfully authenticated and has role ADMIN")
     public void saveBatch_CreatesListOfAnime_WhenSuccessful() {
         Anime animeToBeSaved = AnimeCreator.createAnimeToBeSaved();
 
-        testClientUser
+        testClientAdmin
                 .post()
                 .uri("/animes/batch")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -185,24 +208,7 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("save returns mono error with bad request when name is empty")
-    public void save_ReturnsError_WhenNameIsEmpty() {
-        Anime animeToBeSaved = AnimeCreator.createAnimeToBeSaved().withName("");
-
-        testClientUser
-                .post()
-                .uri("/animes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(BodyInserters.fromValue(animeToBeSaved))
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo(400);
-
-    }
-
-    @Test
-    @DisplayName("saveAll returns Mono error when one of the objects in the list contains null or empty name")
+    @DisplayName("saveAll returns Mono error when one of the objects in the list contains null or empty name and user is successfully authenticated and has role ADMIN")
     public void saveAll_ReturnsMonoError_WhenContainsInvalidName() {
         Anime animeToBeSaved = AnimeCreator.createAnimeToBeSaved();
 
@@ -210,7 +216,7 @@ public class AnimalControllerIT {
                 .saveAll(ArgumentMatchers.anyIterable()))
                 .thenReturn(Flux.just(anime, anime.withName("")));
 
-        testClientUser
+        testClientAdmin
                 .post()
                 .uri("/animes/batch")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -222,9 +228,27 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("delete removes an anime when successful")
+    @DisplayName("save returns mono error with bad request when name is empty and user is successfully authenticated and has role ADMIN")
+    public void save_ReturnsError_WhenNameIsEmpty() {
+        Anime animeToBeSaved = AnimeCreator.createAnimeToBeSaved().withName("");
+
+        testClientAdmin
+                .post()
+                .uri("/animes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BodyInserters.fromValue(animeToBeSaved))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(400);
+
+    }
+
+
+    @Test
+    @DisplayName("delete removes an anime when successful and user is successfully authenticated and has role ADMIN")
     public void delete_RemovesAnime_WhenSuccessful() {
-        testClientUser
+        testClientAdmin
                 .delete()
                 .uri("/animes/{id}", 1)
                 .exchange()
@@ -232,12 +256,12 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("delete returns Mono error when anime does not exist")
+    @DisplayName("delete returns Mono error when anime does not exist and user is successfully authenticated and has role ADMINs")
     public void delete_ReturnMonoError_WhenEmptyMonoIsReturned() {
         BDDMockito.when(animeRepositoryMock.findById(ArgumentMatchers.anyInt()))
                 .thenReturn(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Anime not found")));
 
-        testClientUser
+        testClientAdmin
                 .delete()
                 .uri("/animes/{id}", 1)
                 .exchange()
@@ -248,9 +272,9 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("update save updated anime and returns empty mono when successful")
+    @DisplayName("update save updated anime and returns empty mono when successful and user is successfully authenticated and has role ADMIN")
     public void update_SaveUpdatedAnime_WhenSuccessful() {
-        testClientUser
+        testClientAdmin
                 .put()
                 .uri("/animes/{id}", 1)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -260,12 +284,12 @@ public class AnimalControllerIT {
     }
 
     @Test
-    @DisplayName("update returns Mono error when anime does not exists")
+    @DisplayName("update returns Mono error when anime does not exists and user is successfully authenticated and has role ADMIN")
     public void update_ReturnsMonoError_WhenEmptyMonoIsReturned() {
         BDDMockito.when(animeRepositoryMock.findById(ArgumentMatchers.anyInt()))
                 .thenReturn(Mono.empty());
 
-        testClientUser
+        testClientAdmin
                 .put()
                 .uri("/animes/{id}", 1)
                 .contentType(MediaType.APPLICATION_JSON)
