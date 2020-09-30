@@ -19,9 +19,15 @@
         <blockhound.version>1.0.4.RELEASE</blockhound.version>
         <r2dbc-postgresql.version>0.8.2.RELEASE</r2dbc-postgresql.version>
         <spring-security-test.version>5.3.4.RELEASE</spring-security-test.version>
+        <springdoc-openapi-webflux-ui.version>1.4.8</springdoc-openapi-webflux-ui.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-webflux-ui</artifactId>
+            <version>${springdoc-openapi-webflux-ui.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>

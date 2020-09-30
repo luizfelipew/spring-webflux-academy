@@ -10,11 +10,13 @@ public class SpringWebfluxEssentialsApplication {
 
 	static {
 		BlockHound.install(builder ->
-				builder.allowBlockingCallsInside("java.util.UUID", "randomUUID"));
+				builder.allowBlockingCallsInside("java.util.UUID", "randomUUID")
+				.allowBlockingCallsInside("java.io.InputStream", "readNBytes")
+				.allowBlockingCallsInside("java.io.FilterInputStream", "read"));
 	}
 
 	public static void main(String[] args) {
-		System.out.println(PasswordEncoderFactories.createDelegatingPasswordEncoder().encode("wendt"));
+//		System.out.println(PasswordEncoderFactories.createDelegatingPasswordEncoder().encode("wendt"));
 		SpringApplication.run(SpringWebfluxEssentialsApplication.class, args);
 	}
 
